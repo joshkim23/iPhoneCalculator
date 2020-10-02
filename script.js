@@ -1,17 +1,18 @@
 /* Things to add/debug: 
-    1. write the code better for concatenating the strings 
-    2. Fix toggle button to be able to do -30 * -20
-    3. incorporate decimals
-    4. add delete button to remove previously added numbers
+    1. DONE write the code better for concatenating the strings 
+    2. DONE Fix toggle button to be able to do -30 * -20
+    3. DONE incorporate decimals
+    4. DONE add delete button to remove previously added numbers
+    5. DONE make an initialize calculator function
 */
 const displayEl = document.querySelector(".calculator-display");
 
 let data = {
     //initial values
     maxChars: 10,
-    storedResult: null,
-    currentValue: '0',
-    currentRunningValue: null,
+    storedValue: null,
+    currentValue: 0,
+    interimValue: null,
     currentOperation: null,
 
   // Map the keys (key index values)
@@ -99,38 +100,50 @@ const bindButtons = () => {
 
 // processes userInput, either from the keyboard or from clicking a button. This function takes the keycode type and handles each one differently.
 const processUserInput = (keycode) => {
-    console.log(keycode);
+    // console.log(keycode);
     if(keycode.type === 'input') {
-        data.currentValue = keycode.value;
-        updateDisplay(data.currentValue);
-    }
-    
-    if(keycode.type ==='operation') {
-        data.currentOperation = keycode.value;
+        if (data.interimValue === null) {
+            data.interimValue = keycode.value;
+        } else {
+            data.interimValue += keycode.value;
+        }
+        updateDisplay(data.interimValue);
     }
 
-    if(keycode.type ==='result') {
+    if(keycode.type ==='operation') {
+        data.currentOperation = keycode.value;
+        data.storedValue = data.interimValue; //clears interim value for the next one to be the current value
+        data.interimValue = null;
+    }
+
+    if(keycode.type ==='result') { //pushing equal sign doesn't change the current operation data value
+        data.currentValue = data.interimValue;
         updateDisplay('');
     }
 
     if(keycode.type ==='clear') {
         data.currentValue = 0;
-        data.storedResult = 0;
+        data.storedValue = 0;
         data.currentOperation = '';
-        updateDisplay('clear');
+        data.interimValue = null;
+        displayEl.innerHTML = 0;
     }
     
     if(keycode.type === 'toggle') {
-        data.storedResult *= -1;
-        if (data.storedResult){
-            displayEl.innerHTML = data.storedResult;
-        }
-
+        data.interimValue *= -1;
+        displayEl.innerHTML = data.interimValue;
      }
 
-    // if(keycode.type === 'delete') {
-    //     updateDisplay('delete');
-    // }
+    if(keycode.type === 'delete') {
+    console.log(data.interimValue);
+       data.interimValue = data.interimValue.substring(0,data.interimValue.length-1);
+       if (data.interimValue.length >=1 ) {
+        updateDisplay(data.interimValue);
+       } else {
+           data.interimValue = null;
+           displayEl.innerHTML = 0;
+       }
+    }
 
 
 }
@@ -140,71 +153,58 @@ const processUserInput = (keycode) => {
 const updateDisplay = (newValue) => {
     if (newValue === 'clear') {
         displayEl.innerHTML = 0;
-        console.log(data.currentValue, data.currentOperation, data.storedResult);
     }
 
-    if (data.currentValue && !data.currentOperation) {
-        //have concatenating string while the operation isn't defined
-        if (data.storedResult) {
-            displayEl.innerHTML = data.storedResult + newValue;
-            data.storedResult += newValue;
-        } else {
-            displayEl.innerHTML = newValue;
-            data.storedResult = newValue;
-        }
+    // before the operator has been hit
+    if (!data.currentOperation) { 
+        displayEl.innerHTML = data.interimValue;
     }
 
-    if (data.currentValue && data.currentOperation) {
-        //have concatenating string for current value until an operator button is pushed
-        if(data.currentRunningValue){
-            displayEl.innerHTML = data.currentRunningValue + newValue;
-            data.currentRunningValue += newValue;
-            data.currentValue = data.currentRunningValue;
-            console.log(data.currentValue, 'currentValue');
-        } else {
-            displayEl.innerHTML = data.currentValue;
-            data.currentRunningValue = data.currentValue;
-        }
-
-        // console.log(data.storedResult, data.currentValue);
+    //once the operator has been hit
+    if (data.currentOperation) {
+        displayEl.innerHTML = data.interimValue;
     }
-3
-    if (data.currentValue && data.currentOperation && data.storedResult) {
-        console.log('current, op, stored |||', data.currentValue, data.currentOperation, data.storedResult);
-        let newResult = calculateResult(data.currentValue, data.currentOperation, data.storedResult);
-        console.log(newResult, 'newResult');
+
+    // once all components have been defined, run the calculation
+    if (data.currentValue && data.currentOperation && data.storedValue) {
+        console.log('stored, op, current |||', data.storedValue, data.currentOperation, data.currentValue);
+        let newResult = calculateResult(data.currentValue, data.currentOperation, data.storedValue);
+        // console.log(newResult, 'newResult');
         if (newValue === '') {
-            data.storedResult = newResult;
+            data.storedValue = newResult;
             displayEl.innerHTML = newResult;
             data.currentOperation = null;
             data.currentValue = 0;
-            data.currentRunningValue = 0;
+            data.interimValue = newResult.toString(); //to do follow up calculations on the result! 
         }
     }
-
 }
 
 
 // this calculates the result depending on the operation that is selected and returns it to the updateDisplay function.
 const calculateResult = (current, operation, stored) => {
     if (operation === 'divide') {
-        return parseInt(stored) / parseInt(current);
+        return parseFloat(stored) / parseFloat(current); //parseFloat returns even strings with . as a full number, with parseInt it turns 1.1 into 1
     }
     if (operation === 'multiply') {
-        return parseInt(current) * parseInt(stored);
+        return parseFloat(current) * parseFloat(stored);
     }
     if (operation === 'subtract') {
-        return parseInt(stored) - parseInt(current);
+        return parseFloat(stored) - parseFloat(current);
     }
     if (operation === 'add') {
-        return parseInt(current) + parseInt(stored);
+        return parseFloat(current) + parseFloat(stored);
     }
     if (operation === 'exponent') {
-        return Math.pow(parseInt(stored), parseInt(current));
+        return Math.pow(parseFloat(stored), parseFloat(current));
     }
 
 }
 
 
-bindKeyboard();
-bindButtons();
+const initializeCalc = () => {  
+    bindKeyboard();
+    bindButtons();
+}
+
+initializeCalc();
